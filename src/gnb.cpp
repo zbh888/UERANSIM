@@ -34,6 +34,7 @@ static struct Options
     bool disableCmd{};
 } g_options{};
 
+// Read the yaml config of gNB
 static nr::gnb::GnbConfig *ReadConfigYaml()
 {
     auto *result = new nr::gnb::GnbConfig();
@@ -80,6 +81,8 @@ static nr::gnb::GnbConfig *ReadConfigYaml()
     return result;
 }
 
+
+// Fill the pointer "g_refConfig"
 static void ReadOptions(int argc, char **argv)
 {
     opt::OptionsDescription desc{cons::Project,
@@ -116,6 +119,7 @@ static void ReadOptions(int argc, char **argv)
     }
 }
 
+//  handling received msg.
 static void ReceiveCommand(app::CliMessage &msg)
 {
     if (msg.value.empty())
@@ -196,10 +200,13 @@ static void Loop()
         g_cliServer->sendMessage(app::CliMessage::Error(msg.clientAddr, "Node name is too large"));
         return;
     }
-
+    // This is received msg handling.
     ReceiveCommand(msg);
 }
 
+
+// where the gNB application start.
+// nr-gnb -c myconfig.yaml
 int main(int argc, char **argv)
 {
     app::Initialize();
@@ -209,17 +216,20 @@ int main(int argc, char **argv)
 
     if (!g_options.disableCmd)
     {
-        g_cliServer = new app::CliServer{};
+        // enable Cli server
+        // may be useful when enabling handover cli
+        g_cliServer = new app::CliServer{}; //This creates a Cli Server which can send and receive UDP message
         g_cliRespTask = new app::CliResponseTask(g_cliServer);
     }
-
+    //TODO Constructor
     auto *gnb = new nr::gnb::GNodeB(g_refConfig, nullptr, g_cliRespTask);
     g_gnbMap[g_refConfig->name] = gnb;
 
     if (!g_options.disableCmd)
     {
+        // the cmdPort kind of related to socket
         app::CreateProcTable(g_gnbMap, g_cliServer->assignedAddress().getPort());
-        g_cliRespTask->start();
+        g_cliRespTask->start(); //This starts a NTS thread.
     }
 
     gnb->start();
